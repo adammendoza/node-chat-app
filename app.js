@@ -3,9 +3,8 @@ var express = require('express')
   , http = require('http')
   , server = http.createServer(app)
   , io = require('socket.io').listen(server)
-  , fdb = require('fdb').apiVersion(21)
+  , fdb = require('fdb').apiVersion(200)
   , id = 0
-
 
 // HELPERS --------------------------
 
@@ -21,10 +20,10 @@ function sanitize_for_json(string) {
 
 function load_chats(callback, since) {
   db.doTransaction(function(tr) {
-    var range = fdb.tuple.range(['chat'])
+    var range = events.range()
     var start
     if (since) {
-      start = fdb.tuple.pack(['chat', since + 1])
+      start = events.pack([since + 1])
     } else {
       start = range.begin
     }
@@ -34,7 +33,7 @@ function load_chats(callback, since) {
       for (chat in chats) {
         var chat_json = chats[chat].value.toString()
         new_chats.push(JSON.parse(chat_json))
-        id = fdb.tuple.unpack(chats[chat].key)[1]
+        id = events.unpack(chats[chat].key)[0]
         console.log(id + ' ->',  chat_json)
       }
       callback(new_chats)
@@ -43,7 +42,7 @@ function load_chats(callback, since) {
 }
 
 function load_users(callback) {
-  var range = fdb.tuple.range(['users'])
+  var range = users.range()
   db.getRange(range.begin, range.end, {}, function(err, users) {
     var user_list = []
     for (user in users) {
@@ -70,17 +69,17 @@ function load_all(callback, since) {
 
 function save_event(json) {
   db.doTransaction(function(tr, commit) {
-    var range = fdb.tuple.range(['chat'])
+    var range = events.range()
     var iterator = tr.getRange(range.begin, range.end, { reverse: true, limit: 1 })
     iterator.toArray(function(err, chats) {
       var most_recent = chats[0]
       if (most_recent) {
-        var new_id = fdb.tuple.unpack(most_recent.key)[1] + 1
+        var new_id = events.unpack(most_recent.key)[0] + 1
       } else {
         var new_id = id + 1
       }
       console.log('newest id is', new_id)
-      tr.set(fdb.tuple.pack(['chat', new_id]), json)
+      tr.set(events.pack([new_id]), json)
       commit()
     })
   })
@@ -110,8 +109,8 @@ function add_user(user) {
   console.log('adding user:', user)
   user = sanitize_for_json(user)
   db.doTransaction(function(tr, commit) {
-    tr.set(fdb.tuple.pack(['users', user]), user)
-    var range = fdb.tuple.range(['users'])
+    tr.set(users.pack([user]), user)
+    var range = users.range()
     tr.getRange(range.begin, range.end).toArray(function(err, users) {
       commit(null, users)
     })
@@ -122,8 +121,8 @@ function remove_user(user) {
   console.log('removing user:', user)
   user = sanitize_for_json(user)
   db.doTransaction(function(tr, commit) {
-    tr.clear(fdb.tuple.pack(['users', user]))
-    var range = fdb.tuple.range(['users'])
+    tr.clear(users.pack([user]))
+    var range = users.range()
     tr.getRange(range.begin, range.end).toArray(function(err, users) {
       commit(null, users)
     })
@@ -170,12 +169,12 @@ io.sockets.on('connection', function (socket) {
 
 function lookup_latest_and_start_polling() {
   db.doTransaction(function(tr) {
-    var range = fdb.tuple.range(['chat'])
+    var range = events.range()
     var iterator = tr.getRange(range.begin, range.end, { reverse: true, limit: 1 })
     iterator.toArray(function(err, chats) {
       var most_recent = chats[0]
       if (most_recent) {
-        id = fdb.tuple.unpack(most_recent.key)[1] + 1
+        id = events.unpack(most_recent.key)[0] + 1
       }
       setInterval(check_db_for_updates, 1000)
     })
@@ -189,8 +188,9 @@ function check_db_for_updates() {
 }
 
 console.log('Opening the db...')
-fdb.open(null, null, function(err, the_db) {
-  db = the_db
+db = fdb.open()
+
+function start_server() {
   var port = 1234
   if (process.argv[2]) {
     port = process.argv[2]
@@ -199,4 +199,13 @@ fdb.open(null, null, function(err, the_db) {
   server.listen(port)
   console.log('Looking up latest and starting to poll...')
   lookup_latest_and_start_polling()
-})
+}
+
+var events, users
+fdb.directory.createOrOpen(db, 'events').then(function(events_dir) {
+  events = events_dir
+  return fdb.directory.createOrOpen(db, 'users')
+}).then(function(users_dir) {
+  users = users_dir
+  start_server()
+}, console.log)

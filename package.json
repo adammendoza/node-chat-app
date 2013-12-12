@@ -5,6 +5,6 @@
      "dependencies": {
         "express": "",
         "socket.io": "",
-        "fdb": ""
+        "fdb": "2.0.0"
      }
 }
