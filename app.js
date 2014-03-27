@@ -81,6 +81,7 @@ function save_event(json) {
       console.log('newest id is', new_id)
       tr.set(events.pack([new_id]), json)
       commit()
+      io.sockets.emit('light', '')
     })
   })
 }
@@ -133,6 +134,7 @@ function remove_user(user) {
 // ROUTES --------------------------
 
 app.get('/', function (req, res) { res.sendfile(__dirname + '/public/index.html') })
+app.get('/lights', function (req, res) { res.sendfile(__dirname + '/public/lights.html') })
 app.get('/log', function(req, res) {
   load_all(function(data) {
     res.send(data)
