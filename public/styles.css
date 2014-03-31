@@ -126,12 +126,12 @@ body#lights {
   text-align: center; }
   body#lights .light {
     display: inline-block;
-    width: 30px;
-    height: 30px;
+    width: 100px;
+    height: 100px;
     margin: 0 3em;
     border-radius: 50%;
     background-color: #444;
     transition: all 0.1s ease-out; }
   body#lights .light.on {
     background-color: #690;
-    box-shadow: #000 0 -3px 18px 3px, #7D0 0 2px 12px; }
+    box-shadow: #000 0 -9px 54px 9px, #7D0 0 6px 36px; }
