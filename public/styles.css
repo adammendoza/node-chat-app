@@ -143,15 +143,15 @@ body#lights {
     top: 50%;
     left: 0;
     width: 100%;
-    margin-top: -50px; }
+    margin-top: -75px; }
   body#lights .light {
     display: inline-block;
-    width: 100px;
-    height: 100px;
+    width: 200px;
+    height: 200px;
     margin: 0 3em;
     border-radius: 50%;
     background: #444444 url("/images/chat.png") no-repeat 50% 50%;
-    background-size: 50px 50px;
+    background-size: 100px 100px;
     transition: all 0.1s ease-out; }
   body#lights .light.on {
     background-color: #690;
