@@ -74,6 +74,22 @@ function load_sound_preference() {
   if (sound_off) $('#toggle-sound').addClass('off')
 }
 
+// AUTO-CHATTING FOR THE LAYER DEMO
+function turn_on_auto_chat() {
+  var messages = [
+    "A fool thinks himself to be wise, but a man knows himself to be a fool.",
+    "Listen to many, speak to a few.",
+    "Better three hours too soon than a minute too late.",
+    "Better a witty fool than a foolish wit.",
+    "No legacy is so rich as honesty.",
+    "The empty vessel makes the loudest sound."
+  ]
+  setInterval(function() {
+    var message = messages[Math.floor(Math.random() * messages.length)]
+    $('#the-comment').val(message)
+    $('#send').trigger('click')
+  }, 3000)
+}
 
 var socket = io.connect('/')
 var users = []
@@ -158,4 +174,6 @@ $(function(){
   $('#the-comment').focus()
   
   $(window).unload(function() { socket.emit('leave', my_name) })
+  
+  if (location.href.match(/auto/)) turn_on_auto_chat()
 })
