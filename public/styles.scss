@@ -113,16 +113,40 @@ li { list-style-type: none; }
 }
 
 body#lights {
-  margin-top: 10em;
   text-align: center;
+  position: relative;
+  height: 100%;
+  color: #fff;
+  padding: 0;
+  margin: 0;
+  font-size: 100%;
+  font-family: Arial, sans-serif;
+
+  #label {
+    background: rgba(255,255,255,0.1);
+    text-align: center;
+    height: 50px;
+    line-height: 50px;
+    font-size: 1.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
   
+  #lights {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    margin-top: -50px;
+  }
   .light {
     display: inline-block;
     width: 100px;
     height: 100px;
     margin: 0 3em;
     border-radius: 50%;
-    background-color: #444;
+    background: #444 url('/images/chat.png') no-repeat 50% 50%;
+    background-size: 50px 50px;
     transition: all 0.1s ease-out;
   }
   .light.on {
