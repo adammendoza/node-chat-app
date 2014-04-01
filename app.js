@@ -34,7 +34,6 @@ function load_chats(callback, since) {
         var chat_json = chats[chat].value.toString()
         new_chats.push(JSON.parse(chat_json))
         id = events.unpack(chats[chat].key)[0]
-        console.log(id + ' ->',  chat_json)
       }
       callback(new_chats)
     })
@@ -137,6 +136,8 @@ app.get('/', function (req, res) { res.sendfile(__dirname + '/public/index.html'
 app.get('/lights', function (req, res) { res.sendfile(__dirname + '/public/lights.html') })
 app.get('/log', function(req, res) {
   load_all(function(data) {
+    var chats = data.chats.slice(-100)
+    data.chats = chats
     res.send(data)
   })
 })
