@@ -88,7 +88,7 @@ function turn_on_auto_chat() {
     var message = messages[Math.floor(Math.random() * messages.length)]
     $('#the-comment').val(message)
     $('#send').trigger('click')
-  }, 3000)
+  }, 2000)
 }
 
 var socket = io.connect('/')
