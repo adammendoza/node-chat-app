@@ -158,7 +158,7 @@ $(function(){
     $('#the-comment').val('').focus()
     var id = uuid.v4()
     append_chat({ user: my_name, comment: message, type: 'chat', id: id, time: (new Date()).getTime() }, true)
-    socket.emit('message', my_name, message, id)
+    $.post("/message", {'name': my_name, 'message': message, 'id': id})
   })
 
   $('#the-comment').keypress(function(e) {

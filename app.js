@@ -3,6 +3,7 @@ var express = require('express')
   , http = require('http')
   , server = http.createServer(app)
   , io = require('socket.io').listen(server)
+  , bodyParser = require('body-parser')
   , fdb = require('fdb').apiVersion(200)
   , id = 0
 
@@ -129,6 +130,8 @@ function remove_user(user) {
   }, broadcast_users)
 }
 
+app.use(bodyParser())
+
 
 // ROUTES --------------------------
 
@@ -141,8 +144,15 @@ app.get('/log', function(req, res) {
     res.send(data)
   })
 })
+app.post('/message', function(req, res) {
+  var name = req.body.name
+  var comment = req.body.message
+  var id = req.body.id
+  console.log(name, ': ', comment)
+  save_chat(name, comment, id)
+  res.send('')
+})
 app.use(express.static(__dirname + '/public'))
-
 
 // SOCKET LISTENERS --------------------------
 

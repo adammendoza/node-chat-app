@@ -4,6 +4,7 @@
      "version": "0.0.1",
      "dependencies": {
         "express": "",
+        "body-parser":"*",
         "socket.io": "",
         "fdb": "2.0.0"
      }
