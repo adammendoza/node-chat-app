@@ -20,37 +20,41 @@ function sanitize_for_json(string) {
 // LOADING FROM DB --------------------------
 
 function load_chats(callback, since) {
-  db.doTransaction(function(tr) {
-    var range = events.range()
-    var start
-    if (since) {
-      start = events.pack([since + 1])
-    } else {
-      start = range.begin
-    }
-    var iterator = tr.getRange(start, range.end)
-    iterator.toArray(function(err, chats) {
-      var new_chats = []
-      for (chat in chats) {
-        var chat_json = chats[chat].value.toString()
-        new_chats.push(JSON.parse(chat_json))
-        id = events.unpack(chats[chat].key)[0]
+  fdb.directory.createOrOpen(db, 'events').then(function(events) {
+    db.doTransaction(function(tr) {
+      var range = events.range()
+      var start
+      if (since) {
+        start = events.pack([since + 1])
+      } else {
+        start = range.begin
       }
-      callback(new_chats)
+      var iterator = tr.getRange(start, range.end)
+      iterator.toArray(function(err, chats) {
+        var new_chats = []
+        for (chat in chats) {
+          var chat_json = chats[chat].value.toString()
+          new_chats.push(JSON.parse(chat_json))
+          id = events.unpack(chats[chat].key)[0]
+        }
+        callback(new_chats)
+      })
     })
   })
 }
 
 function load_users(callback) {
-  var range = users.range()
-  db.getRange(range.begin, range.end, {}, function(err, users) {
-    var user_list = []
-    for (user in users) {
-      var name = users[user].value.toString()
-      user_list.push(name)
-    }
-    callback(user_list)
-  })
+  fdb.directory.createOrOpen(db, 'users').then(function(users) {
+    var range = users.range()
+    db.getRange(range.begin, range.end, {}, function(err, users) {
+      var user_list = []
+      for (user in users) {
+        var name = users[user].value.toString()
+        user_list.push(name)
+      }
+      callback(user_list)
+    })
+  });
 }
 
 function load_all(callback, since) {
@@ -68,22 +72,24 @@ function load_all(callback, since) {
 // SAVING TO DB --------------------------
 
 function save_event(json) {
-  db.doTransaction(function(tr, commit) {
-    var range = events.range()
-    var iterator = tr.getRange(range.begin, range.end, { reverse: true, limit: 1 })
-    iterator.toArray(function(err, chats) {
-      var most_recent = chats[0]
-      if (most_recent) {
-        var new_id = events.unpack(most_recent.key)[0] + 1
-      } else {
-        var new_id = id + 1
-      }
-      console.log('newest id is', new_id)
-      tr.set(events.pack([new_id]), json)
-      commit()
-      io.sockets.emit('light', '')
+  fdb.directory.createOrOpen(db, 'events').then(function(events) {
+    db.doTransaction(function(tr, commit) {
+      var range = events.range()
+      var iterator = tr.getRange(range.begin, range.end, { reverse: true, limit: 1 })
+      iterator.toArray(function(err, chats) {
+        var most_recent = chats[0]
+        if (most_recent) {
+          var new_id = events.unpack(most_recent.key)[0] + 1
+        } else {
+          var new_id = id + 1
+        }
+        console.log('newest id is', new_id)
+        tr.set(events.pack([new_id]), json)
+        commit()
+        io.sockets.emit('light', '')
+      })
     })
-  })
+  });
 }
 
 function save_chat(user, comment, id) {
@@ -108,26 +114,30 @@ function broadcast_users(err, users) {
 
 function add_user(user) {
   console.log('adding user:', user)
-  user = sanitize_for_json(user)
-  db.doTransaction(function(tr, commit) {
-    tr.set(users.pack([user]), user)
-    var range = users.range()
-    tr.getRange(range.begin, range.end).toArray(function(err, users) {
-      commit(null, users)
-    })
-  }, broadcast_users)
+  fdb.directory.createOrOpen(db, 'users').then(function(users) {
+    user = sanitize_for_json(user)
+    db.doTransaction(function(tr, commit) {
+      tr.set(users.pack([user]), user)
+      var range = users.range()
+      tr.getRange(range.begin, range.end).toArray(function(err, users) {
+        commit(null, users)
+      })
+    }, broadcast_users)
+  });
 }
 
 function remove_user(user) {
   console.log('removing user:', user)
-  user = sanitize_for_json(user)
-  db.doTransaction(function(tr, commit) {
-    tr.clear(users.pack([user]))
-    var range = users.range()
-    tr.getRange(range.begin, range.end).toArray(function(err, users) {
-      commit(null, users)
-    })
-  }, broadcast_users)
+  fdb.directory.createOrOpen(db, 'users').then(function(users) {
+    user = sanitize_for_json(user)
+    db.doTransaction(function(tr, commit) {
+      tr.clear(users.pack([user]))
+      var range = users.range()
+      tr.getRange(range.begin, range.end).toArray(function(err, users) {
+        commit(null, users)
+      })
+    }, broadcast_users)
+  });
 }
 
 app.use(bodyParser())
@@ -181,17 +191,7 @@ io.sockets.on('connection', function (socket) {
 // BOOT --------------------------
 
 function lookup_latest_and_start_polling() {
-  db.doTransaction(function(tr) {
-    var range = events.range()
-    var iterator = tr.getRange(range.begin, range.end, { reverse: true, limit: 1 })
-    iterator.toArray(function(err, chats) {
-      var most_recent = chats[0]
-      if (most_recent) {
-        id = events.unpack(most_recent.key)[0] + 1
-      }
-      setInterval(check_db_for_updates, 1000)
-    })
-  })
+  setInterval(check_db_for_updates, 1000)
 }
 
 function check_db_for_updates() {
@@ -214,11 +214,4 @@ function start_server() {
   lookup_latest_and_start_polling()
 }
 
-var events, users
-fdb.directory.createOrOpen(db, 'events').then(function(events_dir) {
-  events = events_dir
-  return fdb.directory.createOrOpen(db, 'users')
-}).then(function(users_dir) {
-  users = users_dir
-  start_server()
-}, console.log)
+start_server()
