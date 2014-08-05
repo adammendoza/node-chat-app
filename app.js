@@ -83,7 +83,8 @@ function save_event(json) {
         } else {
           var new_id = id + 1
         }
-        console.log('newest id is', new_id)
+
+        console.log(fdb.buffer.printable(events.pack([new_id])) + " : " + json)
         tr.set(events.pack([new_id]), json)
         commit()
         io.sockets.emit('light', '')
@@ -109,11 +110,9 @@ function broadcast_users(err, users) {
     var name = users[user].value.toString()
     user_list.push(name)
   }
-  console.log('existing users', user_list)
 }
 
 function add_user(user) {
-  console.log('adding user:', user)
   fdb.directory.createOrOpen(db, 'users').then(function(users) {
     user = sanitize_for_json(user)
     db.doTransaction(function(tr, commit) {
@@ -127,7 +126,6 @@ function add_user(user) {
 }
 
 function remove_user(user) {
-  console.log('removing user:', user)
   fdb.directory.createOrOpen(db, 'users').then(function(users) {
     user = sanitize_for_json(user)
     db.doTransaction(function(tr, commit) {
@@ -158,7 +156,6 @@ app.post('/message', function(req, res) {
   var name = req.body.name
   var comment = req.body.message
   var id = req.body.id
-  console.log(name, ': ', comment)
   save_chat(name, comment, id)
   res.send('')
 })
@@ -170,18 +167,15 @@ io.set('log level', 1)
 io.sockets.on('connection', function (socket) {
 
   socket.on('join', function(name) {
-    console.log(name, ' joined')
     add_user(name)
     save_presence(name, 'joined')
   })
   
   socket.on('message', function (name, comment, id) {
-    console.log(name, ': ', comment)
     save_chat(name, comment, id)
   })
 
   socket.on('leave', function(name) {
-    console.log(name, ' disconnected')
     remove_user(name)
     save_presence(name, 'disconnected')
   })
